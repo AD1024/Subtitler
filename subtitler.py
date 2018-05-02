@@ -5,7 +5,7 @@ from xfyun import Speech
 from vad import *
 
 FRAME_DURATION = 30  # ms
-FRAME_SHIFT = 300    # ms
+FRAME_SHIFT = 300  # ms
 SAMPLE_RATE = 16000  # sample rate
 AUTHENTICATION_FILE = 'subtitler_apikey.json'
 aip_client = None
@@ -30,16 +30,6 @@ def log(msg=''):
         return wrapper
 
     return decorate
-
-
-def get_language_id(lang):
-    '''
-    Get language id for AipSpeech
-    :param lang: language id in prompt
-    :return: language id
-    '''
-    return dict(zip([chr(x) for x in range(ord('0'), ord('6'))]
-                    , ['1536', '1537', '1737', '1637', '1837', '1936'])).get(lang, '1737')
 
 
 def raise_error(msg):
