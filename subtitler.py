@@ -91,7 +91,7 @@ def to_srt_time(sec):
 @log('Processing speech segments & writting into srt file')
 def process_segmentation(lang):
     vad = VoiceActivityDetector("audio.wav")
-    frames = vad.get_voice_chunks(30, 300)
+    frames = vad.get_voice_chunks(20, 200, save_files=True)
     dev_id = get_language_id(lang)
     print(dev_id)
     with contextlib.closing(open(srt_filename, 'w')) as fp:
@@ -104,8 +104,9 @@ def process_segmentation(lang):
                 'dev_pid': dev_id,
             })
             if result['err_no'] == 0:
-                fp.write(to_srt_time(frame.timestamp) + '--->' + to_srt_time(frame.timestamp + frame.duration) + '\n')
-                fp.write(result['result'][0] + '\n')
+                fp.write('{}\n'.format(cnt))
+                fp.write(to_srt_time(frame.timestamp) + '-->' + to_srt_time(frame.timestamp + frame.duration) + '\n')
+                fp.write(result['result'][0] + '\n\n')
             else:
                 print('Error occured while processing: {} to {}'.format(
                     to_srt_time(frame.timestamp), to_srt_time(frame.timestamp + frame.duration)))
