@@ -4,11 +4,13 @@ import json
 from xfyun import Speech
 from vad import *
 
-FRAME_DURATION = 10  # ms
+FRAME_DURATION = 30  # ms
+FRAME_SHIFT = 300    # ms
 SAMPLE_RATE = 16000  # sample rate
 AUTHENTICATION_FILE = 'subtitler_apikey.json'
 aip_client = None
 LOGGER = True
+DEV_MODE = True
 
 
 def log(msg=''):
@@ -74,7 +76,7 @@ def to_srt_time(sec):
 @log('Processing speech segments & writting into srt file')
 def process_segmentation():
     vad = VoiceActivityDetector("audio.wav")
-    frames = vad.get_voice_chunks(10, 80, save_files=True)
+    frames = vad.get_voice_chunks(FRAME_DURATION, FRAME_SHIFT, save_files=True if DEV_MODE else False)
     client = Speech()
     with contextlib.closing(open(srt_filename, 'w')) as fp:
         cnt = 0
@@ -87,7 +89,8 @@ def process_segmentation():
             if result['code'] == "0":
                 if len(result['data']) > 0:
                     fp.write('{}\n'.format(cnt))
-                    fp.write(to_srt_time(frame.timestamp) + '-->' + to_srt_time(frame.timestamp + frame.duration) + '\n')
+                    fp.write(to_srt_time(frame.timestamp) + '-->'
+                             + to_srt_time(frame.timestamp + frame.duration) + '\n')
                     fp.write(result['data'] + '\n\n')
             else:
                 print('Error occured while processing: {} to {}'.format(
@@ -99,6 +102,9 @@ if __name__ == '__main__':
     file_name = input('Enter video file: ')
     srt_filename = input('Save subtitle to: ')
     srt_filename += '.srt'
+    if DEV_MODE:
+        FRAME_DURATION = int(input('Duration per frame(ms): '))
+        FRAME_SHIFT = int(input('Offset between frames(ms): '))
     extract_audio(file_name)
     process_segmentation()
     print('Finished')
