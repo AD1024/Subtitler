@@ -1,7 +1,7 @@
-from aip import AipSpeech
 from ffmpy import *
 
 import json
+from xfyun import Speech
 from vad import *
 
 FRAME_DURATION = 10  # ms
@@ -45,23 +45,6 @@ def raise_error(msg):
     exit(-1)
 
 
-def set_up_aip():
-    '''
-    Config AipSpeech; read authentication information in local json file.
-    You can config the file name in `AUTHENTICATION_FILE`
-    :return: None
-    '''
-    try:
-        app_auth_info = json.load(open(AUTHENTICATION_FILE, 'r'))
-        global aip_client
-        aip_client = AipSpeech(app_auth_info['app_id'],
-                               app_auth_info['api_key'], app_auth_info['secret_key'])
-    except IndexError:
-        raise_error('Malformat File: aip authentication file')
-    except FileNotFoundError:
-        raise_error('authentication file not found')
-
-
 @log('Extracting audio')
 def extract_audio(file):
     '''
@@ -89,45 +72,33 @@ def to_srt_time(sec):
 
 
 @log('Processing speech segments & writting into srt file')
-def process_segmentation(lang):
+def process_segmentation():
     vad = VoiceActivityDetector("audio.wav")
-    frames = vad.get_voice_chunks(20, 200, save_files=True)
-    dev_id = get_language_id(lang)
-    print(dev_id)
+    frames = vad.get_voice_chunks(10, 80, save_files=True)
+    client = Speech()
     with contextlib.closing(open(srt_filename, 'w')) as fp:
         cnt = 0
         tot = len(frames)
         for frame in frames:
             cnt += 1
             print('Processing: {} of {}'.format(cnt, tot))
-            result = aip_client.asr(frame.bytes, 'pcm', 16000, {
-                'dev_pid': dev_id,
-            })
-            if result['err_no'] == 0:
-                fp.write('{}\n'.format(cnt))
-                fp.write(to_srt_time(frame.timestamp) + '-->' + to_srt_time(frame.timestamp + frame.duration) + '\n')
-                fp.write(result['result'][0] + '\n\n')
+            result = json.loads(client.asr(frame.bytes))
+            result['data'] = result['data'].encode('ISO-8859-1').decode()
+            if result['code'] == "0":
+                if len(result['data']) > 0:
+                    fp.write('{}\n'.format(cnt))
+                    fp.write(to_srt_time(frame.timestamp) + '-->' + to_srt_time(frame.timestamp + frame.duration) + '\n')
+                    fp.write(result['data'] + '\n\n')
             else:
                 print('Error occured while processing: {} to {}'.format(
                     to_srt_time(frame.timestamp), to_srt_time(frame.timestamp + frame.duration)))
-                print('Errono: code {}\n message: {}'.format(result['err_no'], result['err_msg']))
+                print('Errono: code {}\n message: {}'.format(result['code'], result['desc']))
 
 
 if __name__ == '__main__':
-    print('Setting up BaiduAip ...')
-    set_up_aip()
-    lang_prompt = '''
-        0: English (without punctuation | custom corpus supported)
-        1: Mandarin (Input method model)
-        2: English (with punctuation | custom corpus isn't supported)
-        3: Cantonese
-        4: Sichuanese
-        5: Mandarin (long distance speech)
-    '''
     file_name = input('Enter video file: ')
-    language = input('Input video language: ' + lang_prompt)
     srt_filename = input('Save subtitle to: ')
     srt_filename += '.srt'
     extract_audio(file_name)
-    process_segmentation(language)
+    process_segmentation()
     print('Finished')
