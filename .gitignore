@@ -1,0 +1,8 @@
+.DS_Store
+*.mp4
+*.wav
+__pycache__/
+.idea/
+*.pyc
+subtitler_apikey.json
+
